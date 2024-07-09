@@ -1,0 +1,45 @@
+version: '2'
+
+services:
+  spark:
+    image: docker.io/verboistim/spark:3.5.1-debian-12-r7-bugfix
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+    ports:
+      - '8080:8080'
+    volumes:
+      - /Users/vladpodsadnyj/spark:/opt/spark:rw
+
+  spark-worker:
+    image: docker.io/verboistim/spark:3.5.1-debian-12-r7-bugfix
+    container_name: spark-worker
+    hostname: ${SPARK_HOSTNAME}
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_USER=spark
+      - SPARK_LOCAL_HOSTNAME=${SPARK_HOSTNAME}
+      - SPARK_IDENT_STRING=${SPARK_HOSTNAME}
+      - SPARK_PUBLIC_DNS=${SPARK_HOSTNAME}
+    ports:
+      - '8081:8081'
+
+  clickhouse-server:
+    image: yandex/clickhouse-server
+    container_name: clickhouse-spark
+    ports:
+      - '8123:8123'
+      - '9000:9000'
+ 
