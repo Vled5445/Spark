@@ -19,7 +19,7 @@ services:
   spark-worker:
     image: docker.io/verboistim/spark:3.5.1-debian-12-r7-bugfix
     container_name: spark-worker
-    hostname: ${SPARKHOSTNAME}
+    hostname: ${SPARK_HOSTNAME}
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
@@ -30,9 +30,9 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
-      - SPARK_LOCAL_HOSTNAME=${SPARKHOSTNAME}
-      - SPARK_IDENT_STRING=${SPARKHOSTNAME}
-      - SPARK_PUBLIC_DNS=${SPARKHOSTNAME}
+      - SPARK_LOCAL_HOSTNAME=${SPARK_HOSTNAME}
+      - SPARK_IDENT_STRING=${SPARK_HOSTNAME}
+      - SPARK_PUBLIC_DNS=${SPARK_HOSTNAME}
     ports:
       - '8081:8081'
 
