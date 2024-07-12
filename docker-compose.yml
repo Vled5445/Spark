@@ -14,12 +14,12 @@ services:
     ports:
       - '8080:8080'
     volumes:
-      - /Users/vladpodsadnyj/spark:/opt/spark:rw
+      - /Users/vladpodsadnyj/spark:/opt/spark/Streams:rw
 
   spark-worker:
     image: docker.io/verboistim/spark:3.5.1-debian-12-r7-bugfix
     container_name: spark-worker
-    hostname: ${SPARK_HOSTNAME}
+    hostname: ${SPARKHOSTNAME}
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
@@ -30,16 +30,70 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
-      - SPARK_LOCAL_HOSTNAME=${SPARK_HOSTNAME}
-      - SPARK_IDENT_STRING=${SPARK_HOSTNAME}
-      - SPARK_PUBLIC_DNS=${SPARK_HOSTNAME}
+      - SPARK_LOCAL_HOSTNAME=${SPARKHOSTNAME}
+      - SPARK_IDENT_STRING=${SPARKHOSTNAME}
+      - SPARK_PUBLIC_DNS=${SPARKHOSTNAME}
     ports:
       - '8081:8081'
 
-  clickhouse-server:
-    image: yandex/clickhouse-server
-    container_name: clickhouse-spark
+  zookeeper:
+    image: zookeeper:latest
+    container_name: zookeepers
+    environment:
+      JVMFLAGS: "-Djava.security.auth.login.config=/etc/zookeeper/zookeeper_jaas.conf"
+    volumes:
+      - ./kafka_conf/zookeeper_jaas.conf:/etc/zookeeper/zookeeper_jaas.conf
+      - zookeeper-data-sasl:/data:rw
+      - zookeeper-logs-sasl:/datalog:rw
+    ports:
+     - 1560:2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafkas
+    depends_on:
+      - zookeeper
+    ports:
+      # - 9092:9092
+      - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:SASL_PLAINTEXT,OUTSIDE:SASL_PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_jaas.conf"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - ./kafka_conf/kafka_server_jaas.conf:/etc/kafka/kafka_jaas.conf
+      - ./kafka_conf/client.properties:/etc/kafka/client.properties
+      - kafka-data-sasl:/var/lib/kafka/data:rw
+      - kafka-logs-sasl:/var/lib/kafka-logs:rw
+
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: clickhouse
     ports:
       - '8123:8123'
       - '9000:9000'
- 
+    volumes:
+      - ./clickhouse_conf/users.xml:/etc/clickhouse-server/users.xml
+      - ./clickhouse_conf/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile: 262144
+
+networks:
+  default:
+    name: spark_network
+
+volumes:
+  kafka-data-sasl:
+  kafka-logs-sasl:
+  zookeeper-data-sasl:
+  zookeeper-logs-sasl:
+  clickhouse-data:
